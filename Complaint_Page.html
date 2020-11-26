@@ -66,14 +66,16 @@
 
 	<PaECG id="paecg">
 		<script> 
+		var data=5;
 	document.getElementById("Submit").addEventListener("click",
 		function() {
 		var a=document.getElementById("fname").value;
 		var b=document.getElementById("lname").value;
 		var c=document.getElementById("email").value;
 		// Id of the field and value will be in the json
-		var receiptContent={'userinputs':{'fname':a,'lname':b,'email':c}}
-	  window.postMessage({ type: "FROM_PAGE", receiptData: receiptContent }, "*");
+		// Can also have array that can have third parties are involved and way to generate receipt with them
+		var receiptContent={'userinputs':{'fname':a,'lname':b,'email':c},policyurl:'localhost/web-of-receipts/PrivacyPolicy.txt',javaScript:'localhost/web-of-receipts/PrivacyPolicy.txt'}
+	  window.postMessage({ type: "FROM_PAGE", receiptData: receiptContent,title:'consentDetails',thirdparties:[] }, "*");
 	}, false);
 	</script>
 	</PaECG>

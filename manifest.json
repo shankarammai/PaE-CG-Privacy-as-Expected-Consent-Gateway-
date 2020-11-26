@@ -4,7 +4,7 @@
   "version": "0.1",
   "homepage_url": "https://privacy-as-expected.org/",
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["./libs/SHAACT.js","./libs/forge.js","background.js"]
   },
   "content_scripts": [{
     "matches": [
