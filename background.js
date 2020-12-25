@@ -1,17 +1,22 @@
 //Generating keypair 
-var publicKey,privateKey,publicKey_pem,privateKey_pem;
-var rsa=forge.pki.rsa;
-var keyPair =rsa.generateKeyPair({bits:1024,e:0x10001}) ;
-publicKey=keyPair.publicKey;
-privateKey=keyPair.privateKey
-publicKey_pem=forge.pki.publicKeyToPem( keyPair.publicKey );
-privateKey_pem=forge.pki.privateKeyToPem( keyPair.privateKey );
+var publicKey, privateKey, publicKey_pem, privateKey_pem;
+var rsa = forge.pki.rsa;
+var keyPair = rsa.generateKeyPair({
+    bits: 1024,
+    e: 0x10001
+});
+publicKey = keyPair.publicKey;
+privateKey = keyPair.privateKey
+publicKey_pem = forge.pki.publicKeyToPem(keyPair.publicKey);
+privateKey_pem = forge.pki.privateKeyToPem(keyPair.privateKey);
+var currentActiveTab;
 
 
 
 // When the tab is changed 
 chrome.tabs.onActivated.addListener(function (changedTab) {
     console.log('active tab Id >> ', changedTab.tabId);
+    currentActiveTab = changedTab.tabId;
     sendMessageToTab(changedTab.tabId, "checkSupported");
 });
 
@@ -30,23 +35,42 @@ chrome.runtime.onInstalled.addListener(function (details) {
 // Listening to messaged from Content Script
 chrome.runtime.onMessage.addListener(
     function (receivedMessage, sender, sendResponse) {
-        switch (receivedMessage.title) {
-            case "websiteSupportResponse":
-                if (receivedMessage.data) {
-                    chrome.browserAction.setBadgeText({
-                        text: "Supported"
-                    });
-                    chrome.browserAction.setBadgeBackgroundColor({
-                        color: "green"
-                    });
-                } else {
-                    chrome.browserAction.setBadgeBackgroundColor({
-                        color: "red"
-                    });
-                    chrome.browserAction.setBadgeText({
-                        text: "Not Supported"
-                    });
-                }
+        let messagetitle=receivedMessage.title;
+        if(messagetitle=="websiteSupportResponse"){
+            if (receivedMessage.data) {
+                chrome.browserAction.setBadgeText({
+                    text: "Supported"
+                });
+                chrome.browserAction.setBadgeBackgroundColor({
+                    color: "green"
+                });
+            } else {
+                chrome.browserAction.setBadgeBackgroundColor({
+                    color: "red"
+                });
+                chrome.browserAction.setBadgeText({
+                    text: "Not Supported"
+                });
+            }
+            console.log('Color Changed');
+
+        }
+        if(messagetitle=="signDetails"){
+            console.log('Hashing the Details');
+            var rc = forge.md.sha256.create();
+            let messageTosign = receivedMessage.data;
+            
+            console.log(messageTosign);
+            rc.update(messageTosign, 'utf8');
+            console.log("Signing the data >>")
+            let sigedMessaged = privateKey.sign(rc);
+            console.log("<<<<<<<<<Data Signed>>>>>")
+            let data = {
+                signedMessage: sigedMessaged,
+                publickey_pem: publicKey_pem
+            };
+            sendMessageToTab(currentActiveTab, "signedMessage", data);
+
         }
     }
 );

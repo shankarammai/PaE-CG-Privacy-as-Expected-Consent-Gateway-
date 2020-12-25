@@ -2,7 +2,7 @@
 <html lang="en">
 <head> 
   <meta charset="utf-8">
-  <meta name="pisp" content="http://127.0.0.1/api/pisp">
+  <meta name="pisp" content="ws://127.0.0.1:3100">
     <link rel="stylesheet" href="form.css">
     <!-- Cryptico library for RSA: referenced from cdnjs.com/libraries/cryptico -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cryptico/0.0.1343522940/aes.js"></script>
@@ -65,13 +65,11 @@
     
  
 
-	<PaECG id="paecg">
  <script src="paecg.js"> </script>
   <script> 
   var paecg=new PaECG("Submit",['fname','lname','email'],['http://localhost/web-of-receipts/js/one.js','http://localhost/web-of-receipts/js/two.js'],['http://localhost/web-of-receipts/policy/one.html','http://localhost/web-of-receipts/policy/two.html']);
   paecg.setup();
   </script>
-</PaECG>
     
     
     

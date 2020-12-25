@@ -10,7 +10,7 @@
     "matches": [
       "<all_urls>"
     ],
-    "js": ["jquery.js","content.js"]
+    "js": ["jquery.js","./libs/SHAACT.js","./libs/forge.js","content.js"]
   }],
   "browser_action": {
     "default_title": "PaECG",
@@ -21,6 +21,8 @@
   "permissions": [
     "https://*/*",
     "http://*/*",
-    "tabs"
+    "tabs",
+    "downloads"
+
   ]
 }
