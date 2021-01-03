@@ -4,6 +4,13 @@ var allJavascriptContent = '';
 var allPolicyContent = '';
 var htmlContent= document.documentElement.outerHTML;
 var websocket;
+var timestamp;
+var nounce;
+var local_storage=chrome.storage.local;
+var allReceipts=[];
+
+
+
 
 
 
@@ -34,6 +41,10 @@ if (isSupportedWebsite()) {
 	console.log(pispUrl);
 	console.log('Code injected on Supported Website');
 }
+else{
+	websocket=new WebSocket('ws://127.0.0.1:3200');
+
+}
 
 /**
  * Listening Messages from Runtime
@@ -41,7 +52,12 @@ if (isSupportedWebsite()) {
 chrome.runtime.onMessage.addListener(
 	function (receivedMessage, sender, sendResponse) {
 		let messageTitle=receivedMessage.title;
-		if(messageTitle=="runProtocol"){
+		if(messageTitle=="getCurrentPageInfo"){
+			chrome.runtime.sendMessage({
+				title: 'pageInfoResponse',
+				data: {domain:window.location.host,fullUrl:window.location.href}
+			});
+
 
 		}
 		if(messageTitle=="checkSupported"){
@@ -56,7 +72,9 @@ chrome.runtime.onMessage.addListener(
 			let message_to_send_to_website = {'title':'signedMessage','data':{
 				public_key: receivedMessage.data.publickey_pem,
 				signed_Data:receivedMessage.data.signedMessage,
-				PII: PII
+				PII: PII,
+				nounce,
+				timestamp
 			}};
 			console.log("Sending Signed Message to the website");
 			websocket.send(JSON.stringify(message_to_send_to_website));
@@ -122,13 +140,19 @@ window.addEventListener("message", function (event) {
 		PII = event.data.PII;
 		switch (event.data.title) {
 			case "fetchConsentDetails":
+				/* Run the Protocol*/ 
+
+				//get all url contents >> hash them >> exchange messages with server to generate receipt
 				Promise.all([gatherJavascriptFiles(event.data.javascriptUrls),gatherPolicyFiles(event.data.policyUrls),getHtml()]).then(() => {
 					hashContents().then(()=>{
 						console.log("Hasing Completed By Client");
+						//creating connection with the server to generate receipt 
 						websocket=new WebSocket(pispUrl);
 						websocket.addEventListener("open",()=>{
 							console.log("Connection made with the server");
+							//send hashes to the server
 							let messageToSend={'title':'getContentsAndHash','data':{'policyhash':policyHash,'javascripthash':javascriptCodeHash},'htmlhash':htmlHash};
+							// sending message to server to receipt server
 							websocket.send(JSON.stringify(messageToSend));
 						});
 			
@@ -136,22 +160,22 @@ window.addEventListener("message", function (event) {
 							let message_data=JSON.parse(message.data);
 							console.log(message_data);
 							if(message_data.title=="hashingCompleted"){
-								console.log(allJavascriptContent);
-								if(message_data.data.htmlHash==htmlHash){
-									console.log("Html Hash Matches");
-								}
-								if(message_data.data.policyHash==policyHash){
-									console.log(" Policy Hash Matches");
+								if(message_data.data.policyHash==policyHash &&
+									 message_data.data.htmlHash==htmlHash && 
+									 message_data.data.javascriptHash==javascriptCodeHash ){
+									console.log(" All Hashes Match");
 									let sendPII={'title':'getSignedMessage','data':{'PII':PII}};
 									websocket.send(JSON.stringify(sendPII));
-
-								let messagetoSign = {htmlContent:htmlContent,javascript: allJavascriptContent,policy: allPolicyContent,PII: PII};
-								sendMessageToBackground('signDetails', messagetoSign);
+									
+								timestamp=new Date().getTime();
+								nounce=( 1e9*Math.random()*1e9*Math.random()).toString(16);
+								let messagetoSign = {htmlContent:htmlContent,javascript: allJavascriptContent,policy: allPolicyContent,PII: PII,timestamp:timestamp,nounce:nounce};
 								
-
+								// sending message to background to sign the message
+								sendMessageToBackground('signDetails', messagetoSign);
 								}
-								if(message_data.data.javascriptHash==javascriptCodeHash){
-									console.log("Javascript Hash Matches");
+								else{
+									console.log("Hashes not Matching");
 								}
 			
 							}
@@ -159,7 +183,7 @@ window.addEventListener("message", function (event) {
 								let server_public_key = forge.pki.publicKeyFromPem(message_data.data.server_publickeypem);
 								let server_signed_message = message_data.data.signedMessage;
 								let consent_details={
-									htmlContent:htmlContent,javascript: allJavascriptContent,policy: allPolicyContent,PII:PII
+									htmlContent:htmlContent,javascript: allJavascriptContent,policy: allPolicyContent,PII:PII,timestamp:message_data.data.timestamp,nounce:message_data.data.nounce
 								};
 								let messageDigest = forge.md.sha256.create();
 								messageDigest.update(consent_details, 'utf8');
@@ -178,8 +202,31 @@ window.addEventListener("message", function (event) {
 										'policy':allPolicyContent,
 										'policyHash':policyHash
 									}
-									let fileName=`receipt${Date.now()}.json`;
-									downloadReceipt(JSON.stringify(receiptData), `${fileName}.json` );
+
+									// //saving file to chrome localstorage
+									// let domain=(window.location.origin).toString();
+									// local_storage.get(domain, function(result){
+									// 	try{
+									// 	allReceipts=Object.values(result[domain]);
+									// 	}
+									// 	catch(err){}
+									// 	console.log(allReceipts);
+									// });
+									// allReceipts.unshift(receiptData);
+									// local_storage.set({[domain]:allReceipts}, function() {
+									// 	if(chrome.runtime.lastError) {
+									// 	 console.log("Error Could not save");
+									// 	}
+									//   });
+
+
+									  //saving receipt to the cloud
+									  saveReceiptToCloud(receiptData,window.location.host,window.location.href,timestamp);
+
+									//downloading the file locally
+									let fileName=`receipt${timestamp}.json`;
+									downloadReceipt(JSON.stringify(receiptData), `${fileName}` );
+									
 							}
 							else{
 								console.log('Signature not valid');
@@ -195,13 +242,33 @@ window.addEventListener("message", function (event) {
 
 					});
 				  });
-
-		/*Todo: Need to know what to send to the server
-			Just the siged data and Personal Info or all javascript, html and policy data as well
-			*/
 		}
 	}
 });
+
+function saveReceiptToCloud(receipt,domain,fullurl,timestamp,userId='1234',userToken='abcdef'){
+	$.post('http://localhost:1001/api/save', {
+		receipt: receipt,
+		domain:domain,
+		created_date:timestamp,
+		userId:userId,
+		userToken:userToken,
+		fullurl:fullurl
+	})
+    .done(function(msg){
+		if(msg.success){
+			console.log("Added To Cloud");
+		}
+		else{
+			console.log("Failed to Cloud");
+		}
+	  })
+    .fail(function(xhr, status, error) {
+		// error handling
+		console.log("error");
+		console.log(error);
+    });
+}
 
 async function gatherJavascriptFiles(allFiles) {
 	allJavascriptContent='';

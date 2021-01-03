@@ -5,6 +5,7 @@ const cors = require('cors')
 const fetch = require("node-fetch");
 const sha256= require("sha256");
 const WebSocket = require('ws');
+const date = require('date-and-time');
 const wss = new WebSocket.Server({
     port: 3100
 });
@@ -12,7 +13,7 @@ var htmlHash,javascriptHash,policyHash;
 var allPolicyContent='';
 var allJavascriptContent='';
 var htmlContent=''
-var htmlUrl='http://localhost/web-of-receipts/compliant_page_websocket.html';
+var htmlUrl='http://localhost/web-of-receipts/compliant_website.html';
 var javascriptUrls=['http://localhost/web-of-receipts/js/one.js','http://localhost/web-of-receipts/js/two.js'];
 var policyUrls=['http://localhost/web-of-receipts/policy/one.html','http://localhost/web-of-receipts/policy/two.html'];
 
@@ -53,7 +54,7 @@ wss.on("connection", ws  => {
             let user_public_key = forge.pki.publicKeyFromPem(message_data.public_key);
             let user_signed_message = message_data.signed_Data;
             let consent_details={
-                htmlContent:htmlContent,javascript: allJavascriptContent,policy: allPolicyContent,PII: message_data.PII
+                htmlContent:htmlContent,javascript: allJavascriptContent,policy: allPolicyContent,PII: message_data.PII,timestamp:message_data.timestamp,nounce:message_data.nounce
             };
             console.log("Got all details from client");
             let messageDigest = forge.md.sha256.create();
@@ -85,18 +86,22 @@ wss.on("connection", ws  => {
         
         }
         if(message.title=='getSignedMessage'){
+            let timestamp=new Date().getTime();
+            let nounce=( 1e9*Math.random()*1e9*Math.random() ).toString(16);
             let consent_details={
-                htmlContent:htmlContent,javascript: allJavascriptContent,policy: allPolicyContent,PII: message_data.PII
+                htmlContent:htmlContent,javascript: allJavascriptContent,policy: allPolicyContent,PII: message_data.PII,timestamp:timestamp,nounce:nounce
             };
 
 
             let rc = forge.md.sha256.create();
             rc.update(consent_details, 'utf8');
             let sigedMessaged = privateKey.sign(rc);
-            console.log(">>>>>>Data Signed By the Server<<<<<<<<")
+            console.log("Data Signed By the Server >> ")
             let data = {
                 signedMessage: sigedMessaged,
                 server_publickeypem: publicKey_pem,
+                timestamp:timestamp,
+                nounce:nounce
             };
             console.log("Sending Signed Data To the Client");
             ws.send(JSON.stringify({'title':'signedMessage','data':data}));
