@@ -7,9 +7,8 @@ const cors = require('cors')
 const MongoClient = require('mongodb').MongoClient;
 const dburl = "mongodb://localhost:27017/receiptStorage";
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-app.use(bodyParser.raw());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: "50mb" ,extended: true, parameterLimit: 50000 }));
 app.use(cors());
 app.listen(1001, () => console.log(`Receipt Storage Server started at http://localhost:1001!`));
 
@@ -55,7 +54,7 @@ app.post('/api/get', (req, res) => {
 		if (err) throw err;
 		console.log("Database Connection");
 		const db=client.db("Receipts_Storage");
-		db.collection('receipts').find(search).toArray(function(err, result) {
+		db.collection('receipts').find(search).sort( { 'created_date': -1 } ).toArray(function(err, result) {
 			if (err) throw err;
 			console.log({result});
 			res.send(result);

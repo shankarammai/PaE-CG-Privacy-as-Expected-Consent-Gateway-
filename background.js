@@ -58,7 +58,6 @@ chrome.runtime.onMessage.addListener(
 
         }
         if(messagetitle=="signDetails"){
-            console.log('Hashing Details');
             var rc = forge.md.sha256.create();
             let messageTosign = receivedMessage.data;
             
@@ -74,9 +73,21 @@ chrome.runtime.onMessage.addListener(
             sendMessageToTab(currentActiveTab, "signedMessage", data);
 
         }
-        if(messagetitle=="newReceiptAdded"){
-            console.log("New Receipt Added");
-            window.open("popup/index.html", "extension_popup", "width=300,height=400,status=no,scrollbars=yes,resizable=no");
+        if(messagetitle=="signDetailsForConsentGateway"){
+            var rc = forge.md.sha256.create();
+            let messageTosign = receivedMessage.data;
+            
+            console.log(messageTosign);
+            rc.update(messageTosign, 'utf8');
+            console.log("Signing the data >>")
+            let sigedMessaged = privateKey.sign(rc);
+            console.log("Data Signed by client side >> ")
+            let data = {
+                signedMessage: sigedMessaged,
+                publickey_pem: publicKey_pem
+            };
+            sendMessageToTab(currentActiveTab, "signedMessageForConsentGateway", data);
+
         }
         if(messagetitle=="getUserId_Token"){
             sendMessageToRuntime('UserId_TokenResponse',data={userId:userId,userToken:userToken});

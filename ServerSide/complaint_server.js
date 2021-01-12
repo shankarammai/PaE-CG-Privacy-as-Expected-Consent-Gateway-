@@ -178,48 +178,48 @@ async function getContentFromUrl(file) {
 
 
 
-const app = express();
-app.use(bodyParser.urlencoded({
-    extended: true
-}));
-app.use(bodyParser.json());
-app.use(bodyParser.raw());
-app.use(cors());
-app.post('/api/pisp', (req, res) => {
-    console.log('Got body:', req.body);
-    let user_public_key = forge.pki.publicKeyFromPem(req.body.public_key);
-    let user_signed_message = req.body.signed_Data;
-    let consent_details = req.body.consent_details;
-    console.log("--------Got all details from client----------");
+// const app = express();
+// app.use(bodyParser.urlencoded({
+//     extended: true
+// }));
+// app.use(bodyParser.json());
+// app.use(bodyParser.raw());
+// app.use(cors());
+// app.post('/api/pisp', (req, res) => {
+//     console.log('Got body:', req.body);
+//     let user_public_key = forge.pki.publicKeyFromPem(req.body.public_key);
+//     let user_signed_message = req.body.signed_Data;
+//     let consent_details = req.body.consent_details;
+//     console.log("--------Got all details from client----------");
 
 
-    let messageDigest = forge.md.sha256.create();
-    messageDigest.update(consent_details, 'utf8');
-    let verify = user_public_key.verify(messageDigest.digest().bytes(), user_signed_message);
-    // If the signature is valid then
-    if (verify) {
-        console.log("Signature is valid");
-        console.log("Server signing the data  >>")
-        let rc = forge.md.sha256.create();
-        rc.update(consent_details, 'utf8');
-        let sigedMessaged = privateKey.sign(rc);
-        console.log("<<<<<<<<<Data Signed By the Server>>>>>")
-        let data = {
-            signedMessage: sigedMessaged,
-            publickey_pem: publicKey_pem,
-            consent_details: consent_details
-        };
-        res.status(200).json({
-            data
-        });
-        fs.writeFileSync(`receipts/123.json`, JSON.stringify(data));
+//     let messageDigest = forge.md.sha256.create();
+//     messageDigest.update(consent_details, 'utf8');
+//     let verify = user_public_key.verify(messageDigest.digest().bytes(), user_signed_message);
+//     // If the signature is valid then
+//     if (verify) {
+//         console.log("Signature is valid");
+//         console.log("Server signing the data  >>")
+//         let rc = forge.md.sha256.create();
+//         rc.update(consent_details, 'utf8');
+//         let sigedMessaged = privateKey.sign(rc);
+//         console.log("<<<<<<<<<Data Signed By the Server>>>>>")
+//         let data = {
+//             signedMessage: sigedMessaged,
+//             publickey_pem: publicKey_pem,
+//             consent_details: consent_details
+//         };
+//         res.status(200).json({
+//             data
+//         });
+//         fs.writeFileSync(`receipts/123.json`, JSON.stringify(data));
 
-    } else {
-        console.log("Error:Signature is invalid");
-    }
-
-
-});
+//     } else {
+//         console.log("Error:Signature is invalid");
+//     }
 
 
-app.listen(8080, () => console.log(`Started server at http://localhost:8080!`));
+// });
+
+
+// app.listen(8080, () => console.log(`Started server at http://localhost:8080!`));

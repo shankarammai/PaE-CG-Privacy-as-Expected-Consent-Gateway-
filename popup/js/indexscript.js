@@ -4,6 +4,7 @@ var userId;
 var userToken;
 var userAllReceipts=[];
 var currentDomainReceipts=[];
+var isSupported;
 
 /*
 * Gets necessary information from the currenly visitng page
@@ -29,44 +30,21 @@ $("#showCurrentDomainReceipts").on('click', function () {
 	getCurrentDomainReceiptsFromCloud()
 });
 
-// chrome.storage.local.get(null,function(items){
-// 	var counter=0;
-// 	for (key in items) {
-// 		chrome.storage.local.get(key,function(result){
-// 			var allReceiptsForThisKey=[];
-// 			try{
-// 			allReceiptsForThisKey=Object.values(result[key]);
-// 		}
-// 		catch(err){}
-
-// 			let totalreceipts=allReceiptsForThisKey.length;
-// 			$('#receiptArea').append(`<div id='id${counter}'>📁${key} ->>> ${totalreceipts} <button id='downloadbtnid${counter}'>Download Latest</button> <button id='viewbtnid${counter}'>View Latest</button><br>
-// 			</div>
-// 			`);
-// 			document.getElementById(`id${counter}`)
-// 			var downloadbtnname=`#downloadbtnid${counter}`
-// 			var viewbtnname=`#viewbtnid${counter}`
-// 			$(downloadbtnname).on('click', function () {
-// 				downloadReceipt(JSON.stringify(allReceiptsForThisKey[0]),Date.now());
-// 			});
-// 			$(viewbtnname).on('click', function () {
-// 				// var win = window.open("",'data:application/json;charset=utf-8,', "Receipt", "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=780,height=200,top="+(screen.height-400)+",left="+(screen.width-840));
-// 				// win.document.body.innerHTML = '<pre>'+JSON.stringify(allReceiptsForThisKey[0])+'</pre>';
-
-// 				myWindow = window.open("",'data:application/json;charset=utf-8,' + encodeURIComponent('hellow woorld'),
-// 					   "_blank", "width=200,height=100");
-// 					   myWindow.focus();
-// 			});
-
-
-
-
-// 		});
-// 		counter++;
-		
-// 	}
-
-// });
+function getAllReceiptsFromLocalStorage(){
+	chrome.storage.local.get(null,function(items){
+		for (var key in items) {
+			if (items.hasOwnProperty(key)) {
+				let currentreceipt=items[key];
+				userAllReceipts.push(currentreceipt);
+				if(currentreceipt.domain==currentDomain){
+					currentDomainReceipts.push(currentDomainReceipts);
+				}
+			}
+		}
+	});
+	console.log("Loaded from Local Stoage");
+	console.log(userAllReceipts);
+}
 
 /**
  * Gets all the receipts from the cloud of the currently visiting website
@@ -133,13 +111,10 @@ gatherNecessaryInfo();
  */
 function showReceipts(msg){
 	if(msg.length==0){
-		$('#receiptArea').append(`<div class="col-12"> <p>No receipts found for this site<p></div>`);
+		$('#receiptArea').html(`<div class="col-12"> <p>No receipts found for this site<p></div>`);
 	}
 	else{
 		msg.forEach(element => {
-			// $('#receiptArea').append(`<div id='id${element._id}'>📁${element.domain}<button id='downloadbtnid${element._id}'>Download Latest</button> <button id='viewbtnid${element._id}'>View Latest</button><br>
-			// </div>
-			// `);
 			$('#receiptArea').append(
 			`<div class="receipt_file col-3">
 			<div class="row">
@@ -157,12 +132,13 @@ function showReceipts(msg){
 			document.getElementById(`id${element._id}`)
 			var downloadbtnname=`#downloadbtnid${element._id}`
 			var viewbtnname=`#viewbtnid${element._id}`
+			console.log()
 			$(downloadbtnname).on('click', function () {
-				downloadReceipt(JSON.stringify(msg.receipt),Date.now());
+				downloadReceipt(JSON.stringify(element.receipt),Date.now());
 			});
 			$(viewbtnname).on('click', function () {
 				var win = window.open("",'data:application/json;charset=utf-8,', "Receipt", "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=780,height=200,top="+(screen.height-400)+",left="+(screen.width-840));
-				win.document.body.innerHTML = '<pre>'+JSON.stringify(allReceiptsForThisKey[0])+'</pre>';
+				win.document.body.innerHTML = '<pre>'+JSON.stringify(element.receipt)+'</pre>';
 			});
 		});
 		console.log(msg);
@@ -220,7 +196,18 @@ chrome.runtime.onMessage.addListener(
 		var msgdata=receivedMessage.data
 		if(receivedMessage.title=="pageInfoResponse"){
 			currentUrl=msgdata.fullUrl;
-			currentDomain=msgdata.domain
+			currentDomain=msgdata.domain;
+			if(msgdata.isSupported){
+				$("#supportedIcon").removeClass("badge-secondary").addClass("badge-success");
+				$("#supportedIcon").text("Supported");
+
+			}
+			else{
+				$("#supportedIcon").removeClass("badge-secondary").addClass("badge-danger");
+				$("#supportedIcon").text("Not Supported");
+
+
+			}
 		}
 		if(receivedMessage.title=="UserId_TokenResponse"){
 			userId=msgdata.userId;
